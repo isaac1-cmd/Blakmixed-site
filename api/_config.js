@@ -12,13 +12,14 @@ module.exports = {
     {
       id: "gents",
       name: "Gents",
-      price: 5000, // PLACEHOLDER: set your real price
+      price: 40000, // PLACEHOLDER: set your real price
       tagline: "General admission for gentlemen",
       description:
         "Your pass to Chill Out, the 2-day house party. Relax, enjoy the music and vibe with the crowd across both days.",
       includes: [
         "Entry for one (1) gentleman",
         "Access to the party across both days",
+        "Access to food and drink on day1",
         "Great music and a lively crowd",
         "Full access to the entertainment experience"
       ]
@@ -26,13 +27,14 @@ module.exports = {
     {
       id: "ladies",
       name: "Ladies",
-      price: 3000, // PLACEHOLDER: set your real price
+      price: 30000, // PLACEHOLDER: set your real price
       tagline: "General admission for ladies",
       description:
         "Your pass to Chill Out, the 2-day house party. Bring your girls, unwind and enjoy two days built around good vibes and great music.",
       includes: [
         "Entry for one (1) lady",
         "Access to the party across both days",
+        "Access to food and drink on day1",
         "Great music and a lively crowd",
         "Full access to the entertainment experience"
       ]
@@ -48,6 +50,7 @@ module.exports = {
         "Entry for one (1) guest, gents or ladies",
         "Priority entry (skip the queue)",
         "Access to the dedicated VIP section",
+        "Access to food and drink on day1",
         "Reserved VIP seating area",
         "Great music and a lively crowd"
       ]
@@ -70,10 +73,10 @@ const svc = (category, name, price, desc, extra = {}) => ({ category, name, pric
 
 const SERVICES = [
   // ---- MEDIA ----
-  svc("Media", "Basic Package", 100000, "2 reels • 100 pictures • 1 full coverage video"),
+  svc("Media", "Basic Package", 150000, "2 reels • 100 pictures • 1 full coverage video"),
   svc("Media", "Standard Package", 300000, "4 reels • 300 pictures • 1 standard video edit"),
   svc("Media", "Premium Package", 1000000, "Full coverage with our full team • Full video and picture production"),
-  svc("Media", "Studio Photoshoot", 50000, "5 clean edited pictures • 3 different outfits"),
+  svc("Media", "Studio Photoshoot", 45000, "5 clean edited pictures • 3 different outfits"),
   svc("Media", "Single Picture", 10000, "Simple, plain background. Priced per picture.", { unit: "picture" }),
   svc("Media", "Content Creation", 30000, "Each content costs ₦30,000.", { unit: "content" }),
 
@@ -100,13 +103,24 @@ module.exports.WHATSAPP = "2348136669773";    // where customers are sent after 
    image    : file name of the picture saved in the main folder, e.g. "cap-1.webp"
    sizes    : optional list, e.g. ["S","M","L"]. Leave out if the product has no sizes.
 ------------------------------------------------------------------- */
+const SIZES = ["S", "M", "L", "XL", "XXL"];
 const CATALOG = [
-  { category: "Cap",    name: "Sample Cap 1",    price: 8000,  image: "", desc: "Replace with your product description." },
-  { category: "Cap",    name: "Sample Cap 2",    price: 9000,  image: "", desc: "Replace with your product description." },
-  { category: "Hoodie", name: "Sample Hoodie 1", price: 25000, image: "", sizes: ["S", "M", "L", "XL", "XXL"], desc: "Replace with your product description." },
-  { category: "Hoodie", name: "Sample Hoodie 2", price: 28000, image: "", sizes: ["S", "M", "L", "XL", "XXL"], desc: "Replace with your product description." },
-  { category: "Shirt",  name: "Sample Shirt 1",  price: 12000, image: "", sizes: ["S", "M", "L", "XL", "XXL"], desc: "Replace with your product description." },
-  { category: "Shirt",  name: "Sample Shirt 2",  price: 13000, image: "", sizes: ["S", "M", "L", "XL", "XXL"], desc: "Replace with your product description." }
+  // ---- CAPS ----
+  { category: "Cap", name: "Truckers Cap (Red)", price: 10000, image: "cap-red.webp", desc: "Red truckers cap with embroidered \"Your Vibe, Our Voice\"." },
+  { category: "Cap", name: "Truckers Cap (Pink)", price: 8000, image: "cap-pink.webp", desc: "Pink truckers cap with the BME logo." },
+
+  // ---- HOODIE & SWEATSHIRT ----
+  { category: "Hoodie & Sweatshirt", name: "Hoodie", price: 40000, image: "hoodie.webp", sizes: SIZES, desc: "White hoodie with the BME logo." },
+  { category: "Hoodie & Sweatshirt", name: "Sweatshirt", price: 25000, image: "sweatshirt.webp", sizes: SIZES, desc: "Cream sweatshirt with BLAKMIXED lettering down the chest." },
+
+  // ---- SHIRTS ----
+  { category: "Shirt", name: "Tank Top (Men)", price: 15000, image: "tank-top-men.webp", sizes: SIZES, desc: "Black sleeveless tank top with the gold BME logo." },
+  { category: "Shirt", name: "Tank Top (Ladies)", price: 10000, image: "tank-top-ladies.webp", sizes: SIZES, desc: "White ribbed tank top with the gold BME logo." },
+  { category: "Shirt", name: "Polo", price: 30000, image: "polo.webp", sizes: SIZES, desc: "White shirt with the BME logo print." },
+  { category: "Shirt", name: "T-Shirt", price: 20000, image: "tshirt.webp", sizes: SIZES, desc: "White tee with BLAKMIXED across the chest." },
+
+  // ---- COMBO ----
+  { category: "Combo", name: "Tee + Cap Combo", price: 35000, image: "combo.webp", sizes: SIZES, desc: "Black oversized tee with a pink BLAKMIXED truckers cap." }
 ];
 
 /* ------------------------------------------------------------------
