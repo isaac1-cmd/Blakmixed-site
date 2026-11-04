@@ -74,7 +74,7 @@ const svc = (category, name, price, desc, extra = {}) => ({ category, name, pric
 
 const SERVICES = [
   // ---- MEDIA ----
-  svc("Media", "Basic Package", 130000, "2 reels • 100 pictures • 1 full coverage video"),
+  svc("Media", "Basic Package", 150000, "2 reels • 100 pictures • 1 full coverage video"),
   svc("Media", "Standard Package", 300000, "4 reels • 300 pictures • 1 standard video edit"),
   svc("Media", "Premium Package", 1000000, "Full coverage with our full team • Full video and picture production"),
   svc("Media", "Studio Photoshoot", 45000, "5 clean edited pictures • 3 different outfits"),
