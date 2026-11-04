@@ -97,7 +97,7 @@ header nav{display:none;position:absolute;top:78px;left:0;right:0;background:#05
 .sectionlabel{margin-bottom:35px}
 }
 .brand img{width:60px;height:60px;object-fit:contain}
-.hero{background:linear-gradient(rgba(0,0,0,.75),rgba(0,0,0,.85)),url('hero-background.jpg') center/cover no-repeat !important}
+.hero{background:linear-gradient(90deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.4) 55%,rgba(0,0,0,.15) 100%),url('hero-background.jpg') center/cover no-repeat !important}
 .navbtn,.btn{border-color:#D4AF37}
 .hero h1 i,.sectionlabel{color:#D4AF37}
 
@@ -300,7 +300,7 @@ a.ticketopt{text-decoration:none}
 .shopgrid.customgrid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .pcard{display:flex;flex-direction:column;background:#0f0f0f;border:1px solid #232323;transition:.2s}
 .pcard:hover{border-color:#3a3a3a}
-.pimg{position:relative;aspect-ratio:1/1;background:#080808;overflow:hidden}
+.pimg{position:relative;aspect-ratio:8/7;background:#080808;overflow:hidden}
 .pimg img{width:100%;height:100%;object-fit:cover}
 .pimg.noimg{display:grid;place-items:center;background:repeating-linear-gradient(45deg,#0d0d0d,#0d0d0d 14px,#121212 14px,#121212 28px)}
 .pimg.noimg span{font-size:12px;letter-spacing:4px;font-weight:800;color:#4a4a4a}
@@ -362,3 +362,6 @@ a.ticketopt{text-decoration:none}
   .cartbtn span{display:none}
   .shoptitle .eyebrow{display:none}
 }
+
+/* Hero: keep the intro line readable over the brighter background */
+.hero p{color:#d6d6d6}
