@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Payment | Blakmixed Entertainment</title>
+<link rel="icon" href="logo.webp">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <a class="brand" href="/"><img src="logo.webp" alt="Blakmixed Entertainment logo"><span>BLAKMIXED<br><small>ENTERTAINMENT</small></span></a>
+</header>
+<main class="result">
+  <div class="resultbox" id="box"><p>Confirming your payment…</p></div>
+</main>
+<script>
+(async () => {
+  const box = document.getElementById("box");
+  const ref = new URLSearchParams(location.search).get("reference");
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const naira = (n) => "₦" + Number(n).toLocaleString("en-NG");
+  const show = (icon, title, msg, extra = "", actions = '<a class="btn white" href="/">Back to Home</a>') =>
+    box.innerHTML = `<div class="resulticon">${icon}</div><h1>${title}</h1><p>${msg}</p>${extra}<div class="actions" style="justify-content:center">${actions}</div>`;
+
+  if (!ref) return show("⚠️", "No payment found", "We couldn't find a payment reference on this page.");
+  try {
+    const r = await fetch("/api/verify?reference=" + encodeURIComponent(ref));
+    const d = await r.json();
+
+    if (d.status === "success" && d.kind === "order") {
+      // Fashion store order: clear that cart, confirm, then WhatsApp follow-up
+      try { localStorage.removeItem("bme_cart_" + d.mode); } catch {}
+      const custom = d.mode === "custom";
+      const summary = d.items.map((i) => `${i.q}x ${i.n}${i.s ? " (" + i.s + ")" : ""}`).join(", ");
+      const msg = custom
+        ? `Hello BLAKMIXED ENTERTAINMENT, this is ${d.name}. I just paid ${naira(d.amount)} for my personalized customization order (${summary}). Payment reference: ${d.reference}. Here is my design idea: `
+        : `Hello BLAKMIXED ENTERTAINMENT, this is ${d.name}. I just paid ${naira(d.amount)} for my order (${summary}). Payment reference: ${d.reference}.`;
+      const wa = `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(msg)}`;
+      const lines = d.items.map((i) => `<div><span>${esc(i.q)} × ${esc(i.n)}${i.s ? " (" + esc(i.s) + ")" : ""}</span><b>${naira(i.u * i.q)}</b></div>`).join("");
+      show("✅", custom ? "Order received" : "Order confirmed",
+        `Thank you, ${esc(d.name)}! A confirmation email is on its way to <b>${esc(d.email)}</b>. Check your spam folder if you don't see it.`,
+        `<div class="receipt">${lines}<div><span>Total paid</span><b>${naira(d.amount)}</b></div><div><span>Reference</span><b class="refcode">${esc(d.reference)}</b></div></div>
+         ${custom ? '<p id="waNote">Taking you to WhatsApp to talk through your design in <b id="sec">8</b> seconds…</p>' : '<p>We\'ll be in touch to confirm your order and delivery. You can also message us on WhatsApp.</p>'}`,
+        `<a class="btn white" href="${wa}">${custom ? "Continue to WhatsApp" : "Message us on WhatsApp"}</a>`);
+      if (custom) {
+        let n = 8;
+        const t = setInterval(() => {
+          n--;
+          const el = document.getElementById("sec");
+          if (el) el.textContent = n;
+          if (n <= 0) { clearInterval(t); location.href = wa; }
+        }, 1000);
+      }
+    } else if (d.status === "success" && d.kind === "service") {
+      // Payment for a service: confirm, then send them to WhatsApp for follow-up
+      const msg = `Hello BLAKMIXED ENTERTAINMENT, this is ${d.name}. I just paid ${naira(d.amount)} for "${d.item}"${d.qty > 1 ? " (quantity: " + d.qty + ")" : ""}. Payment reference: ${d.reference}. Here are my details: `;
+      const wa = `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(msg)}`;
+      show("✅", "Payment received",
+        `Thank you, ${esc(d.name)}! A confirmation email is on its way to <b>${esc(d.email)}</b>. Check your spam folder if you don't see it.`,
+        `<div class="receipt"><div><span>Service</span><b>${esc(d.item)}</b></div>${d.qty > 1 ? `<div><span>Quantity</span><b>${esc(d.qty)}</b></div>` : ""}<div><span>Amount paid</span><b>${naira(d.amount)}</b></div><div><span>Reference</span><b class="refcode">${esc(d.reference)}</b></div></div>
+         <p id="waNote">Taking you to WhatsApp for follow-up in <b id="sec">8</b> seconds…</p>`,
+        `<a class="btn white" href="${wa}">Continue to WhatsApp</a>`);
+      let n = 8;
+      const t = setInterval(() => {
+        n--;
+        const el = document.getElementById("sec");
+        if (el) el.textContent = n;
+        if (n <= 0) { clearInterval(t); location.href = wa; }
+      }, 1000);
+    } else if (d.status === "success") {
+      show("✅", "Payment confirmed", `Thank you, ${esc(d.name)}! A confirmation email is on its way to <b>${esc(d.email)}</b>. Check your spam folder if you don't see it.`,
+        `<div class="receipt"><div><span>Event</span><b>${esc(d.event)}</b></div><div><span>Ticket</span><b>${esc(d.ticket)}</b></div><div><span>Amount paid</span><b>${naira(d.amount)}</b></div><div><span>Reference</span><b class="refcode">${esc(d.reference)}</b></div></div>`);
+    } else if (d.status === "abandoned" || d.status === "failed") {
+      show("❌", "Payment not completed", "Your payment didn't go through and you haven't been charged. You can try again.");
+    } else {
+      show("⚠️", "We couldn't confirm this payment", "If you were debited, please message us on WhatsApp with your payment reference.");
+    }
+  } catch {
+    show("⚠️", "Couldn't check your payment", "Please refresh this page. If the problem continues, message us on WhatsApp.");
+  }
+})();
+</script>
+</body>
+</html>
