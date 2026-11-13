@@ -43,12 +43,14 @@
       <input id="q" placeholder="Search name, email, phone or reference…">
       <select id="fTicket"></select>
       <select id="fEvent"></select>
+      <select id="fCheck"><option value="">All check-in status</option><option value="in">Checked in</option><option value="out">Not checked in</option></select>
     </div>
+    <p class="formstatus error" id="checkWarn" hidden>Check-in is not connected yet. Add an Upstash Redis database to this project in Vercel (see README), then redeploy.</p>
 
     <p class="formstatus" id="dashStatus" role="status"></p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Phone</th><th>Item</th><th>Amount</th><th>Delivery / Notes</th><th>Reference</th></tr></thead>
+        <thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Phone</th><th>Item</th><th>Amount</th><th>Delivery / Notes</th><th>Reference</th><th>Check-in</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -59,14 +61,15 @@
 const $ = (id) => document.getElementById(id);
 const naira = (n) => "₦" + Number(n).toLocaleString("en-NG");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-let all = [];
+let all = [], checkinReady = true;
 
 async function load(pw) {
   $("dashStatus").textContent = "Loading sales…";
   const r = await fetch("/api/admin", { headers: { "x-admin-password": pw } });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error || "Could not load.");
-  all = d.sales;
+  all = d.sales; checkinReady = d.checkinReady;
+  $("checkWarn").hidden = checkinReady || !all.some((s) => s.isTicket);
   sessionStorage.setItem("bme_admin", pw);
   $("login").hidden = true; $("dash").hidden = false; $("logout").hidden = false;
   const opts = (key, label) => `<option value="">${label}</option>` + [...new Set(all.map((s) => s[key]))].filter(Boolean).map((v) => `<option>${esc(v)}</option>`).join("");
@@ -76,27 +79,66 @@ async function load(pw) {
 }
 
 function filtered() {
-  const q = $("q").value.trim().toLowerCase(), t = $("fTicket").value, e = $("fEvent").value;
+  const q = $("q").value.trim().toLowerCase(), t = $("fTicket").value, e = $("fEvent").value, c = $("fCheck").value;
   return all.filter((s) =>
     (!t || s.ticket === t) && (!e || s.event === e) &&
+    (!c || (c === "in" ? !!s.checkedInAt : s.isTicket && !s.checkedInAt)) &&
     (!q || [s.name, s.email, s.phone, s.reference].some((v) => String(v).toLowerCase().includes(q)))
   );
 }
+
+const timeOf = (iso) => (iso && iso !== true ? new Date(iso).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "");
+function checkCell(s) {
+  if (!s.isTicket) return '<span class="muted">-</span>';
+  const ref = esc(s.reference);
+  if (s.checkedInAt) {
+    return `<span class="checked">✓ Checked in</span><small class="muted"> ${esc(timeOf(s.checkedInAt))}</small> <button type="button" class="undo" data-ref="${ref}">Undo</button>`;
+  }
+  return `<button type="button" class="checkbtn" data-ref="${ref}">Check in</button>`;
+}
+
+async function sendCheck(reference, action) {
+  const r = await fetch("/api/checkin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-admin-password": sessionStorage.getItem("bme_admin") || "" },
+    body: JSON.stringify({ reference, action })
+  });
+  const d = await r.json().catch(() => ({}));
+  return { status: r.status, d };
+}
+
+$("rows").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-ref]");
+  if (!btn || btn.disabled) return;
+  const ref = btn.dataset.ref, sale = all.find((x) => x.reference === ref);
+  const undo = btn.classList.contains("undo");
+  if (undo && !confirm(`Undo check-in for ${sale.name}? Only do this if it was a mistake.`)) return;
+  btn.disabled = true;
+  try {
+    const { status, d } = await sendCheck(ref, undo ? "undo" : "checkin");
+    if (status === 409) { sale.checkedInAt = d.at || true; alert(`ALREADY CHECKED IN\n\n${sale.name} (${sale.ticket}) was checked in${d.at ? " at " + timeOf(d.at) : ""}.\nDo not let a second person in with this ticket.`); }
+    else if (status >= 400) { alert(d.error || "Something went wrong."); }
+    else { sale.checkedInAt = undo ? null : d.at; }
+  } catch { alert("No connection. Please try again."); }
+  draw();
+});
 
 function draw() {
   const list = filtered();
   const total = list.reduce((a, s) => a + s.amount, 0);
   const byType = {}; list.forEach((s) => (byType[s.ticket] = (byType[s.ticket] || 0) + 1));
+  const tix = list.filter((s) => s.isTicket), inCount = tix.filter((s) => s.checkedInAt).length;
   $("stats").innerHTML =
     `<div><span>Revenue</span><b>${naira(total)}</b></div><div><span>Sales</span><b>${list.length}</b></div>` +
+    (tix.length ? `<div><span>Checked in</span><b>${inCount} / ${tix.length}</b></div>` : "") +
     Object.entries(byType).map(([k, v]) => `<div><span>${esc(k)}</span><b>${v}</b></div>`).join("");
   $("rows").innerHTML = list.map((s) =>
-    `<tr><td>${new Date(s.date).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })}</td><td>${esc(s.name)}</td><td>${esc(s.email)}</td><td>${esc(s.phone)}</td><td>${esc(s.ticket)}</td><td>${naira(s.amount)}</td><td class="wrapcell">${esc(s.details)}</td><td class="refcode">${esc(s.reference)}</td></tr>`
+    `<tr><td>${new Date(s.date).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })}</td><td>${esc(s.name)}</td><td>${esc(s.email)}</td><td>${esc(s.phone)}</td><td>${esc(s.ticket)}</td><td>${naira(s.amount)}</td><td class="wrapcell">${esc(s.details)}</td><td class="refcode">${esc(s.reference)}</td><td>${checkCell(s)}</td></tr>`
   ).join("");
   $("dashStatus").textContent = list.length ? "" : "No sales found.";
 }
 
-["q", "fTicket", "fEvent"].forEach((id) => $(id).addEventListener("input", draw));
+["q", "fTicket", "fEvent", "fCheck"].forEach((id) => $(id).addEventListener("input", draw));
 $("refresh").addEventListener("click", () => load(sessionStorage.getItem("bme_admin")).catch((e) => ($("dashStatus").textContent = e.message)));
 $("logout").addEventListener("click", () => { sessionStorage.removeItem("bme_admin"); location.reload(); });
 
@@ -109,8 +151,8 @@ $("loginForm").addEventListener("submit", async (e) => {
 
 $("csv").addEventListener("click", () => {
   const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["Date", "Name", "Email", "Phone", "Item", "Event", "Amount", "Delivery / Notes", "Reference"];
-  const lines = [head.map(cell).join(",")].concat(filtered().map((s) => [s.date, s.name, s.email, s.phone, s.ticket, s.event, s.amount, s.details, s.reference].map(cell).join(",")));
+  const head = ["Date", "Name", "Email", "Phone", "Item", "Event", "Amount", "Delivery / Notes", "Reference", "Checked in"];
+  const lines = [head.map(cell).join(",")].concat(filtered().map((s) => [s.date, s.name, s.email, s.phone, s.ticket, s.event, s.amount, s.details, s.reference, s.isTicket ? (s.checkedInAt ? timeOf(s.checkedInAt) || "Yes" : "No") : ""].map(cell).join(",")));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
   a.download = "blakmixed-ticket-sales.csv"; a.click();
