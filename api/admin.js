@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const store = require("./_store");
 
 const same = (a, b) => {
   const x = crypto.createHash("sha256").update(String(a)).digest();
@@ -28,7 +29,9 @@ module.exports = async (req, res) => {
       for (const t of d.data) {
         const m = t.metadata || {};
         if (m.source !== "blakmixed-site") continue;
+        const isTicket = m.kind === "ticket" || (!m.kind && !m.service_id && !!m.ticket_name);
         sales.push({
+          isTicket,
           date: t.paid_at || t.created_at,
           name: m.name || "",
           email: t.customer?.email || "",
@@ -44,7 +47,13 @@ module.exports = async (req, res) => {
       }
       if (d.data.length < 100) break;
     }
-    res.status(200).json({ sales });
+    // Who has been checked in (needs the Upstash Redis database; sales still load without it)
+    let checkins = {}, checkinReady = store.configured();
+    if (checkinReady) {
+      try { checkins = await store.allCheckins(); } catch (e) { console.error(e); checkinReady = false; }
+    }
+    for (const s of sales) { const c = checkins[s.reference]; s.checkedInAt = c ? c.at || true : null; }
+    res.status(200).json({ sales, checkinReady });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: "Could not load sales from Paystack." });
